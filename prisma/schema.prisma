@@ -1,0 +1,74 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         String    @default("guest") // "admin" or "guest"
+  createdAt    DateTime  @default(now()) @map("created_at")
+  bookings     Booking[]
+
+  @@map("Users")
+}
+
+model RoomType {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  basePrice   Float    @map("base_price")
+  capacity    Int
+  amenities   String   // JSON string array of amenity items
+  imagesJson  String   @map("images_json") // JSON string array of image URLs
+  rooms       Room[]
+
+  @@map("RoomTypes")
+}
+
+model Room {
+  id         String    @id @default(cuid())
+  roomNumber String    @unique @map("room_number")
+  roomTypeId String    @map("room_type_id")
+  roomType   RoomType  @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  status     String    @default("available") // "available" | "maintenance" | "out_of_service"
+  bookings   Booking[]
+
+  @@map("Rooms")
+}
+
+model Booking {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId       String    @map("room_id")
+  room         Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  checkInDate  String    @map("check_in_date") // YYYY-MM-DD
+  checkOutDate String    @map("check_out_date") // YYYY-MM-DD
+  totalAmount  Float     @map("total_amount")
+  status       String    @default("confirmed") // "confirmed" | "cancelled"
+  createdAt    DateTime  @default(now()) @map("created_at")
+  payments     Payment[]
+
+  @@index([roomId, checkInDate, checkOutDate])
+  @@map("Bookings")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  bookingId       String   @map("booking_id")
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount          Float
+  paymentStatus   String   @default("completed") @map("payment_status") // "completed" | "pending" | "refunded"
+  paymentMethod   String   @default("credit_card") @map("payment_method") // "credit_card" | "paypal" | "stripe" | "crypto"
+  transactionDate DateTime @default(now()) @map("transaction_date")
+
+  @@map("Payments")
+}
+
